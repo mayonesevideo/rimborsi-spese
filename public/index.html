@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestione Rimborsi Spesa - Home</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="style-shared.css">
+  <style>
+    body {
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .portal-container {
+      max-width: 900px;
+      width: 100%;
+      text-align: center;
+      animation: fadeIn 0.6s ease-out;
+    }
+    .portal-header {
+      margin-bottom: 40px;
+    }
+    .portal-header h1 {
+      font-family: var(--font-title);
+      font-size: 42px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #ffffff 0%, #a855f7 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .portal-header p {
+      font-size: 16px;
+      color: var(--text-secondary);
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    .portal-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      margin-top: 20px;
+    }
+    @media (max-width: 640px) {
+      .portal-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .portal-card {
+      position: relative;
+      overflow: hidden;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      border: 1px solid var(--border-color);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .portal-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      transition: var(--transition-normal);
+    }
+    .portal-card.employee::before {
+      background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+    }
+    .portal-card.admin::before {
+      background: linear-gradient(90deg, var(--accent) 0%, #c084fc 100%);
+    }
+    .portal-card:hover {
+      transform: translateY(-8px);
+      border-color: rgba(255, 255, 255, 0.2);
+      box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5);
+    }
+    .portal-card.employee:hover {
+      box-shadow: 0 20px 40px -15px rgba(99, 102, 241, 0.3);
+    }
+    .portal-card.admin:hover {
+      box-shadow: 0 20px 40px -15px rgba(217, 70, 239, 0.3);
+    }
+    .icon-wrapper {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+      font-size: 32px;
+      transition: var(--transition-normal);
+    }
+    .employee .icon-wrapper {
+      background: rgba(99, 102, 241, 0.1);
+      color: var(--primary);
+    }
+    .admin .icon-wrapper {
+      background: rgba(217, 70, 239, 0.1);
+      color: var(--accent);
+    }
+    .portal-card:hover .icon-wrapper {
+      transform: scale(1.1);
+    }
+    .employee:hover .icon-wrapper {
+      background: var(--primary);
+      color: #ffffff;
+      box-shadow: 0 0 20px var(--primary-glow);
+    }
+    .admin:hover .icon-wrapper {
+      background: var(--accent);
+      color: #ffffff;
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+    .portal-card h2 {
+      font-family: var(--font-title);
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: #ffffff;
+    }
+    .portal-card p {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      margin-bottom: 24px;
+      flex-grow: 1;
+    }
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    .footer {
+      margin-top: 50px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .theme-switch-btn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+    }
+  </style>
+</head>
+<body data-theme="dark">
+
+  <button id="theme-toggle" class="btn btn-secondary btn-icon-only theme-switch-btn" title="Cambia Tema">
+    <i class="fa-solid fa-moon"></i>
+  </button>
+
+  <div class="portal-container">
+    <div class="portal-header">
+      <h1><i class="fa-solid fa-money-bill-transfer"></i> Rimborsi Spesa</h1>
+      <p>Gestisci i rimborsi chilometrici e le note spese dell'azienda Mayonese S.R.L. con calcolo automatico dei percorsi e compilazione Excel.</p>
+    </div>
+
+    <div class="portal-grid">
+      <!-- Employee portal card -->
+      <div class="glass-panel portal-card employee" onclick="location.href='user.html'">
+        <div class="icon-wrapper">
+          <i class="fa-solid fa-user-tie"></i>
+        </div>
+        <h2>Portale Dipendente</h2>
+        <p>Compila la tua nota spese, calcola in tempo reale la distanza stradale delle trasferte dalla sede di Parma, carica le ricevute (Telepass, Pedaggi, Parcheggi) e invia il rendiconto.</p>
+        <span class="btn btn-primary" style="width: 100%;">
+          Accedi <i class="fa-solid fa-arrow-right"></i>
+        </span>
+      </div>
+
+      <!-- Admin portal card -->
+      <div class="glass-panel portal-card admin" onclick="location.href='admin.html'">
+        <div class="icon-wrapper">
+          <i class="fa-solid fa-user-gear"></i>
+        </div>
+        <h2>Portale Amministrazione</h2>
+        <p>Visualizza e gestisci le note spese inviate dai dipendenti. Esporta automaticamente i dati nel file Excel ministeriale per il commercialista e scarica tutti gli allegati già rinominati e zippati.</p>
+        <span class="btn btn-primary" style="width: 100%; background: linear-gradient(135deg, var(--accent) 0%, #a855f7 100%); box-shadow: 0 4px 14px 0 rgba(217, 70, 239, 0.4);">
+          Accedi <i class="fa-solid fa-arrow-right"></i>
+        </span>
+      </div>
+    </div>
+
+    <div class="footer">
+      Mayonese S.R.L. &copy; 2026. Tutti i diritti riservati.
+    </div>
+  </div>
+
+  <script>
+    // Theme toggler logic
+    const body = document.body;
+    const themeToggle = document.getElementById('theme-toggle');
+    
+    // Check saved theme
+    const savedTheme = localStorage.getItem('rimborsi_v2_theme') || 'dark';
+    body.setAttribute('data-theme', savedTheme);
+    updateToggleIcon(savedTheme);
+
+    themeToggle.addEventListener('click', () => {
+      const currentTheme = body.getAttribute('data-theme');
+      const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+      body.setAttribute('data-theme', newTheme);
+      localStorage.setItem('rimborsi_v2_theme', newTheme);
+      updateToggleIcon(newTheme);
+    });
+
+    function updateToggleIcon(theme) {
+      if (theme === 'light') {
+        themeToggle.innerHTML = '<i class="fa-solid fa-sun"></i>';
+      } else {
+        themeToggle.innerHTML = '<i class="fa-solid fa-moon"></i>';
+      }
+    }
+  </script>
+</body>
+</html>

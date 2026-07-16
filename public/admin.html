@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rimborso Spesa - Portale Amministrazione</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="style-shared.css">
+  <style>
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 24px;
+      width: 100%;
+    }
+    /* Stats Cards Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      border: 1px solid var(--border-color);
+      position: relative;
+      overflow: hidden;
+      cursor: pointer;
+      transition: var(--transition-fast);
+    }
+    .stat-card:hover {
+      background: rgba(255,255,255,0.02);
+      border-color: rgba(255, 255, 255, 0.15);
+      transform: translateY(-2px);
+    }
+    .stat-card::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: var(--primary);
+    }
+    .stat-card.accent::after {
+      background: var(--accent);
+    }
+    .stat-card.success::after {
+      background: var(--success);
+    }
+    .stat-card.warning::after {
+      background: var(--warning);
+    }
+    .stat-icon {
+      width: 50px;
+      height: 50px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+    .stat-card .stat-icon {
+      background: rgba(99, 102, 241, 0.1);
+      color: var(--primary);
+    }
+    .stat-card.accent .stat-icon {
+      background: rgba(217, 70, 239, 0.1);
+      color: var(--accent);
+    }
+    .stat-card.success .stat-icon {
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--success);
+    }
+    .stat-card.warning .stat-icon {
+      background: rgba(245, 158, 11, 0.1);
+      color: var(--warning);
+    }
+    .stat-info {
+      display: flex;
+      flex-direction: column;
+    }
+    .stat-info span {
+      font-size: 11px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .stat-info strong {
+      font-family: var(--font-title);
+      font-size: 22px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-top: 2px;
+    }
+
+    /* Admin Layout Grid */
+    .admin-layout {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
+    @media (min-width: 1200px) {
+      .admin-layout.has-detail {
+        grid-template-columns: 1fr 450px;
+      }
+    }
+
+    /* Table styles */
+    .table-container {
+      overflow-x: auto;
+      margin-top: 16px;
+    }
+    .admin-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+    .admin-table th, .admin-table td {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 13px;
+    }
+    .admin-table th {
+      font-family: var(--font-title);
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      background: rgba(0, 0, 0, 0.15);
+    }
+    .admin-table tr {
+      transition: var(--transition-fast);
+    }
+    .admin-table tbody tr:hover {
+      background: rgba(255, 255, 255, 0.02);
+      cursor: pointer;
+    }
+    .admin-table tbody tr.active-row {
+      background: rgba(99, 102, 241, 0.05);
+      border-left: 3px solid var(--primary);
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .badge-count {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-main);
+    }
+    .badge-money {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--success);
+    }
+
+    /* Detail Card */
+    .detail-card {
+      position: sticky;
+      top: 100px;
+      animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    .detail-header {
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 14px;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+    }
+    .detail-header h3 {
+      font-family: var(--font-title);
+      font-size: 18px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+    .detail-header p {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+    .detail-close {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 18px;
+      transition: var(--transition-fast);
+    }
+    .detail-close:hover {
+      color: #ffffff;
+    }
+    .info-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .info-item {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+      padding-bottom: 6px;
+    }
+    .info-item span {
+      color: var(--text-secondary);
+    }
+    .info-item strong {
+      color: #ffffff;
+    }
+
+    /* Inner Detail Table */
+    .inner-table-container {
+      max-height: 250px;
+      overflow-y: auto;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .inner-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+    }
+    .inner-table th, .inner-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .inner-table th {
+      background: rgba(0, 0, 0, 0.3);
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      font-size: 9px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    
+    /* Attachment Pills */
+    .attachment-pill {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 11px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .attachment-pill i {
+      color: var(--primary);
+      margin-right: 6px;
+    }
+    .attachment-type-badge {
+      font-size: 8px;
+      font-weight: 700;
+      padding: 1px 4px;
+      border-radius: 3px;
+      text-transform: uppercase;
+    }
+    .type-telepass { background: rgba(99, 102, 241, 0.2); color: #818cf8; }
+    .type-autostrada { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+    .type-parcheggio { background: rgba(217, 70, 239, 0.2); color: #f472b6; }
+    .type-generico { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body data-theme="dark">
+
+  <header>
+    <div class="logo-section" onclick="location.href='index.html'" style="cursor:pointer;">
+      <h1><i class="fa-solid fa-user-gear"></i> Portale Amministrazione</h1>
+      <p>Gestione note spese, esportazione fogli Excel e pacchetti allegati</p>
+    </div>
+    <div class="header-controls">
+      <button class="btn btn-secondary btn-sm" onclick="location.href='index.html'">
+        <i class="fa-solid fa-house"></i> Home
+      </button>
+      <button class="btn btn-secondary btn-sm" onclick="location.href='user.html'">
+        <i class="fa-solid fa-user-tie"></i> Portale Dipendente
+      </button>
+      <button id="theme-toggle" class="btn btn-secondary btn-icon-only" title="Cambia Tema">
+        <i class="fa-solid fa-moon"></i>
+      </button>
+    </div>
+  </header>
+
+  <div class="container">
+    
+    <!-- Statistics Cards -->
+    <div class="stats-grid">
+      <div class="glass-panel stat-card">
+        <div class="stat-icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+        <div class="stat-info">
+          <span>Note Spese Totali</span>
+          <strong id="stat-total-reports">0</strong>
+        </div>
+      </div>
+      <div class="glass-panel stat-card accent">
+        <div class="stat-icon"><i class="fa-solid fa-sack-dollar"></i></div>
+        <div class="stat-info">
+          <span>Totale Rimborsato</span>
+          <strong id="stat-total-money">0,00 €</strong>
+        </div>
+      </div>
+      <div class="glass-panel stat-card success">
+        <div class="stat-icon"><i class="fa-solid fa-car-side"></i></div>
+        <div class="stat-info">
+          <span>Righe Spesa Caricate</span>
+          <strong id="stat-total-items">0</strong>
+        </div>
+      </div>
+      <div class="glass-panel stat-card warning">
+        <div class="stat-icon"><i class="fa-solid fa-paperclip"></i></div>
+        <div class="stat-info">
+          <span>Allegati Ricevute</span>
+          <strong id="stat-total-files">0</strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats Breakdown Drawer -->
+    <div id="stats-breakdown-drawer" class="glass-panel" style="display: none; padding: 20px; margin-bottom: 24px; border: 1px solid var(--border-color); animation: fadeIn 0.3s ease; background: rgba(255,255,255,0.015);">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:8px; margin-bottom:12px;">
+        <h4 id="breakdown-title" style="font-family: var(--font-title); font-size:13px; font-weight:700; color:#fff; display:flex; align-items:center; gap:6px; margin:0;">
+          <!-- Populated dynamically -->
+        </h4>
+        <button id="breakdown-close" class="modal-close" style="font-size:14px;"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div id="breakdown-content" style="font-size:13px; color: var(--text-secondary);">
+        <!-- Populated dynamically -->
+      </div>
+    </div>
+
+    <!-- Main Section Grid -->
+    <div id="admin-layout-container" class="admin-layout">
+      
+      <!-- Left Section: Submissions Table -->
+      <section class="glass-panel" style="min-width: 0;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+          <h3 id="table-title" style="font-family: var(--font-title); font-size: 18px; font-weight: 700; color: #ffffff; display: flex; align-items: center; gap: 8px; margin: 0;">
+            <i class="fa-solid fa-list-check" style="color: var(--primary);"></i> Voci Spesa Bimestre
+          </h3>
+        </div>
+        
+        <!-- Period Filter Panel -->
+        <div class="filter-panel" style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 15px; margin-bottom: 20px; padding: 12px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 8px;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <label style="font-size: 11px; color: var(--text-secondary); font-weight: 500;">Seleziona Bimestre:</label>
+            <select id="select-bimestre" class="form-input" style="padding: 5px 8px; font-size: 12px; background: #1f1b2e; border: 1px solid var(--border-color); color: #fff; border-radius: 6px; width: 220px; cursor: pointer;">
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <label style="font-size: 11px; color: var(--text-secondary); font-weight: 500;">Seleziona Dipendente:</label>
+            <select id="select-dipendente" class="form-input" style="padding: 5px 8px; font-size: 12px; background: #1f1b2e; border: 1px solid var(--border-color); color: #fff; border-radius: 6px; width: 200px; cursor: pointer;">
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+          <div style="display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap;">
+            <!-- Standard Buttons -->
+            <button id="btn-preview-general" class="btn btn-outline btn-sm" style="padding: 6px 12px; font-size: 11px; height: 32px; border-color: var(--success); color: var(--success);"><i class="fa-solid fa-eye"></i> Anteprima Generale</button>
+            <button id="btn-filter-excel" class="btn btn-primary btn-sm" style="padding: 6px 12px; font-size: 11px; height: 32px; background: #107c41; border-color: #107c41;"><i class="fa-solid fa-file-excel"></i> Esporta Excel</button>
+            
+            <!-- Highlighted Purple Buttons -->
+            <button id="btn-preview-highlighted" class="btn btn-outline btn-sm" style="padding: 6px 12px; font-size: 11px; height: 32px; border-color: #c084fc; color: #c084fc;"><i class="fa-solidfa-eye" style="display:none;"></i><i class="fa-solid fa-eye"></i> Anteprima Evidenziata</button>
+            <button id="btn-export-highlighted" class="btn btn-primary btn-sm" style="padding: 6px 12px; font-size: 11px; height: 32px; background: #a855f7; border-color: #a855f7;"><i class="fa-solid fa-file-excel"></i> Esporta Evidenziato</button>
+            
+            <!-- Other Views -->
+            <button id="btn-open-viola" class="btn btn-secondary btn-sm" style="padding: 6px 12px; font-size: 11px; background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); height: 32px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; border-radius: 6px; transition: all 0.2s;"><i class="fa-solid fa-folder-open"></i> Voci Viola</button>
+            <button id="btn-open-trash" class="btn btn-secondary btn-sm" style="padding: 6px 12px; font-size: 11px; background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.2); height: 32px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; border-radius: 6px; transition: all 0.2s;"><i class="fa-solid fa-trash-can"></i> Cestino</button>
+          </div>
+        </div>
+        
+        <div class="table-container">
+          <table class="admin-table" id="reports-table">
+            <thead>
+              <tr>
+                <th style="width: 50px; text-align: center;">Excel</th>
+                <th>Data</th>
+                <th>Cliente / Progetto</th>
+                <th>Tipo</th>
+                <th>Descrizione / Tratta</th>
+                <th style="text-align: center;">KM</th>
+                <th style="text-align: right;">Importo</th>
+                <th style="text-align: right;">Azioni</th>
+              </tr>
+            </thead>
+            <tbody id="reports-list">
+              <!-- Dynamically populated -->
+              <tr>
+                <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                  <i class="fa-solid fa-circle-notch spinner" style="font-size: 24px; margin-bottom: 10px; display: block; margin-left: auto; margin-right: auto; color: var(--primary);"></i>
+                  Caricamento note spese in corso...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Right Section: Details Drawer (Shows when row clicked) -->
+      <section id="detail-pane" class="glass-panel detail-card" style="display: none;">
+        <!-- Populated via JS -->
+      </section>
+
+    </div>
+
+    <!-- Excel Preview Modal -->
+    <div id="excel-preview-modal" class="modal-overlay">
+      <div class="modal-card" style="max-width: 1100px; width: 95%; max-height: 90vh; display: flex; flex-direction: column; background: #1e1b2e; border: 1px solid var(--border-color); border-radius: 12px; box-shadow: var(--card-shadow);">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding: 14px 20px;">
+          <h3 style="font-family: var(--font-title); font-size: 16px; font-weight: 700; color: #ffffff; display: flex; align-items: center; gap: 8px; margin: 0;">
+            <i class="fa-solid fa-file-excel" style="color: #107c41;"></i> Anteprima Foglio Spese Excel
+          </h3>
+          <button id="excel-preview-close" class="modal-close"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="modal-body" style="overflow-y: auto; overflow-x: auto; flex-grow: 1; padding: 20px;">
+          <div style="background: #ffffff; color: #333333; border: 1px solid #d3d3d3; border-radius: 4px; overflow: hidden; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 13px; min-width: 900px;">
+            <!-- Column Letters Header -->
+            <div style="display: flex; background: #f3f2f1; text-align: center; font-weight: bold; border-bottom: 1px solid #d3d3d3; color: #595959; font-size: 11px;">
+              <div style="width: 40px; border-right: 1px solid #d3d3d3; padding: 4px 0; background: #e1dfdd; flex-shrink: 0;"></div>
+              <div style="width: 40px; border-right: 1px solid #d3d3d3; padding: 4px 0; flex-shrink: 0;">A (Num)</div>
+              <div style="width: 90px; border-right: 1px solid #d3d3d3; padding: 4px 0; flex-shrink: 0;">B (Data)</div>
+              <div style="width: 140px; border-right: 1px solid #d3d3d3; padding: 4px 0; flex-shrink: 0;">C (Cliente)</div>
+              <div style="width: 200px; border-right: 1px solid #d3d3d3; padding: 4px 0; flex-shrink: 0; flex-grow: 1; text-align: left; padding-left: 8px;">D (Tratta/Descrizione)</div>
+              <div style="width: 95px; border-right: 1px solid #d3d3d3; padding: 4px 0; flex-shrink: 0;">E (Forfettario)</div>
+              <div style="width: 80px; border-right: 1px solid #d3d3d3; padding: 4px 0; flex-shrink: 0;">F (Pedaggi)</div>
+              <div style="width: 75px; border-right: 1px solid #d3d3d3; padding: 4px 0; flex-shrink: 0;">G (KM)</div>
+              <div style="width: 90px; border-right: 1px solid #d3d3d3; padding: 4px 0; flex-shrink: 0;">H (Rimb. KM)</div>
+              <div style="width: 80px; border-right: 1px solid #d3d3d3; padding: 4px 0; flex-shrink: 0;">I (Altro)</div>
+              <div style="width: 90px; padding: 4px 0; flex-shrink: 0; font-weight: bold; background: #e1dfdd;">J (Totale)</div>
+            </div>
+            <!-- Rows Body -->
+            <div id="excel-preview-rows" style="display: flex; flex-direction: column;"></div>
+          </div>
+        </div>
+        <div class="modal-footer" style="border-top: 1px solid var(--border-color); padding: 14px 20px; display: flex; justify-content: flex-end; gap: 10px;">
+          <button id="excel-preview-close-btn" class="btn btn-secondary btn-sm">Chiudi</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Trash Bin Modal -->
+    <div id="trash-modal" class="modal-overlay">
+      <div class="modal-card" style="max-width: 800px; width: 95%; max-height: 90vh; display: flex; flex-direction: column; background: #1e1b2e; border: 1px solid var(--border-color); border-radius: 12px; box-shadow: var(--card-shadow);">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding: 14px 20px;">
+          <h3 style="font-family: var(--font-title); font-size: 16px; font-weight: 700; color: #ffffff; display: flex; align-items: center; gap: 8px; margin: 0;">
+            <i class="fa-solid fa-trash-can" style="color: var(--danger);"></i> Cestino Note Spese
+          </h3>
+          <button id="trash-modal-close" class="modal-close"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="modal-body" style="overflow-y: auto; padding: 20px; flex-grow: 1;">
+          <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 15px; line-height: 1.5;">
+            Le note spese eliminate rimangono nel cestino per <strong>60 giorni</strong> prima di essere cancellate definitivamente in modo permanente insieme a tutti i loro file allegati.
+          </p>
+          <div class="table-container" style="border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; background: rgba(0,0,0,0.15);">
+            <table class="admin-table" style="width: 100%; border-collapse: collapse; font-size: 12px;">
+              <thead>
+                <tr style="background: rgba(0,0,0,0.3); text-align: left; color: var(--text-secondary);">
+                  <th style="padding: 10px 12px;">Dipendente</th>
+                  <th style="padding: 10px 12px;">Periodo</th>
+                  <th style="padding: 10px 12px;">Eliminato il</th>
+                  <th style="padding: 10px 12px;">Scadenza (Giorni)</th>
+                  <th style="padding: 10px 12px; text-align: right;">Azioni</th>
+                </tr>
+              </thead>
+              <tbody id="trash-list">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer" style="border-top: 1px solid var(--border-color); padding: 14px 20px; display: flex; justify-content: flex-end;">
+          <button id="trash-modal-close-btn" class="btn btn-secondary btn-sm">Chiudi</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+    <!-- Viola Tenue Modal -->
+    <div id="viola-modal" class="modal-overlay">
+      <div class="modal-card" style="max-width: 900px; width: 95%; max-height: 90vh; display: flex; flex-direction: column; background: #1e1b2e; border: 1px solid var(--border-color); border-radius: 12px; box-shadow: var(--card-shadow);">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding: 14px 20px;">
+          <h3 style="font-family: var(--font-title); font-size: 16px; font-weight: 700; color: #c084fc; display: flex; align-items: center; gap: 8px; margin: 0;">
+            <i class="fa-solid fa-folder-open" style="color: #c084fc;"></i> Voci Spesa / Trasferte Flaggate Viola
+          </h3>
+          <button id="viola-modal-close" class="modal-close"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="modal-body" style="overflow-y: auto; padding: 20px; flex-grow: 1;">
+          <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 15px; line-height: 1.5;">
+            Di seguito sono elencate tutte le voci di spesa e trasferte per le quali è stato selezionato il colore <strong>Viola Tenue</strong> nel bimestre corrente per l'utente selezionato.
+          </p>
+          <div class="table-container" style="border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; background: rgba(0,0,0,0.15);">
+            <table class="admin-table" style="width: 100%; border-collapse: collapse; font-size: 12px;">
+              <thead>
+                <tr style="background: rgba(0,0,0,0.3); text-align: left; color: var(--text-secondary);">
+                  <th style="padding: 10px 12px;">Data</th>
+                  <th style="padding: 10px 12px;">Cliente / Progetto</th>
+                  <th style="padding: 10px 12px;">Tipo</th>
+                  <th style="padding: 10px 12px;">Descrizione / Tratta</th>
+                  <th style="padding: 10px 12px; text-align: center;">KM</th>
+                  <th style="padding: 10px 12px; text-align: right;">Importo</th>
+                </tr>
+              </thead>
+              <tbody id="viola-list">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer" style="border-top: 1px solid var(--border-color); padding: 14px 20px; display: flex; justify-content: flex-end; gap: 10px;">
+          <button id="btn-export-viola" class="btn btn-primary btn-sm" style="background: #a855f7; border-color: #a855f7;"><i class="fa-solid fa-file-excel"></i> Esporta Solo Voci Viola</button>
+          <button id="viola-modal-close-btn" class="btn btn-secondary btn-sm">Chiudi</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Lightbox Modal -->
+  <div id="lightbox-modal" class="modal-overlay" style="z-index: 2000; background: rgba(0,0,0,0.85);" onclick="closeLightbox()">
+    <button class="modal-close" style="position: absolute; top: 20px; right: 20px; font-size: 24px; color: #fff; background: transparent; border: none; cursor: pointer;"><i class="fa-solid fa-xmark"></i></button>
+    <img id="lightbox-img" src="" style="max-width: 90%; max-height: 90%; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); pointer-events: auto;" onclick="event.stopPropagation();">
+  </div>
+
+  <!-- Application Script -->
+  <script src="admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+{
+  "name": "rimborsi-v2",
+  "version": "1.0.0",
+  "description": "Expense reimbursement tool with User and Admin panels",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "exceljs": "^4.4.0",
+    "express": "^4.21.2",
+    "googleapis": "^173.0.0",
+    "jszip": "^3.10.1",
+    "multer": "^1.4.5-lts.1",
+    "pdf-parse": "^1.1.1",
+    "tesseract.js": "^7.0.0"
+  }
+}

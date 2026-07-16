@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rimborso Spesa - Portale Dipendente</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="style-shared.css">
+  <style>
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 24px;
+      width: 100%;
+    }
+    .user-grid {
+      display: grid;
+      grid-template-columns: 350px 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+    @media (max-width: 1024px) {
+      .user-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .profile-card {
+      position: sticky;
+      top: 100px;
+    }
+    .panel-title-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .panel-title-bar h2 {
+      font-family: var(--font-title);
+      font-size: 20px;
+      font-weight: 700;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    /* Expense Card Specifics */
+    .expense-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+      position: relative;
+      animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      transition: var(--transition-normal);
+    }
+    .expense-card:hover {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+    .expense-card.viola-highlight {
+      border-color: rgba(168, 85, 247, 0.35);
+      background: rgba(168, 85, 247, 0.04);
+      box-shadow: 0 0 10px rgba(168, 85, 247, 0.1);
+    }
+    .expense-card.viola-highlight:hover {
+      border-color: rgba(168, 85, 247, 0.55);
+      background: rgba(168, 85, 247, 0.07);
+      box-shadow: 0 0 12px rgba(168, 85, 247, 0.15);
+    }
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 10px;
+    }
+    .card-index-badge {
+      background: var(--primary);
+      color: #ffffff;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .card-actions {
+      display: flex;
+      gap: 6px;
+    }
+    /* Route calculator style */
+    .route-calculator-zone {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 12px;
+      margin-bottom: 12px;
+    }
+    .route-calc-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-secondary);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      padding-bottom: 6px;
+      margin-bottom: 8px;
+    }
+    .route-badge {
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--success);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 600;
+    }
+    .calc-results-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .calc-result-item {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+    .calc-result-item.summary-item {
+      font-size: 12px;
+      color: #ffffff;
+      font-weight: 600;
+      border-top: 1px dashed rgba(255, 255, 255, 0.1);
+      padding-top: 6px;
+      margin-top: 4px;
+    }
+    /* Uploader Zone */
+    .uploader-zone {
+      border: 2px dashed var(--border-color);
+      border-radius: 10px;
+      padding: 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: var(--transition-fast);
+      margin-top: 12px;
+    }
+    .uploader-zone:hover, .uploader-zone.dragover {
+      border-color: var(--primary);
+      background: rgba(99, 102, 241, 0.04);
+    }
+    .uploader-zone i {
+      font-size: 24px;
+      color: var(--primary);
+      margin-bottom: 6px;
+    }
+    .uploader-zone p {
+      font-size: 12px;
+      font-weight: 500;
+      margin-bottom: 2px;
+    }
+    .uploader-zone span {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+    /* Attachments Container */
+    .attachments-items-container {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .attachment-item {
+      background: rgba(0, 0, 0, 0.15);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 8px 12px;
+    }
+    .attachment-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+    .attachment-name-section {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow: hidden;
+      flex-grow: 1;
+    }
+    .attachment-name-section i {
+      color: var(--primary);
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    .attachment-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .file-type-select {
+      font-size: 11px;
+      padding: 4px 8px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border-color);
+      color: #ffffff;
+      border-radius: 4px;
+      outline: none;
+    }
+    .renamed-preview-box {
+      font-size: 11px;
+      color: var(--accent);
+      background: rgba(217, 70, 239, 0.05);
+      border-radius: 4px;
+      padding: 4px 8px;
+      margin-top: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border-left: 2px solid var(--accent);
+      word-break: break-all;
+    }
+    .renamed-preview-box i {
+      font-size: 9px;
+      transform: scaleX(-1);
+    }
+    /* Submit Bar */
+    .submit-bar {
+      margin-top: 24px;
+      border-top: 1px solid var(--border-color);
+      padding-top: 20px;
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body data-theme="dark">
+
+  <header>
+    <div class="logo-section" onclick="location.href='index.html'" style="cursor:pointer;">
+      <h1><i class="fa-solid fa-user-tie"></i> Portale Dipendente</h1>
+      <p>Compila i rimborsi spesa, calcola i percorsi e carica gli allegati</p>
+    </div>
+    <div class="header-controls">
+      <button class="btn btn-secondary btn-sm" onclick="location.href='index.html'">
+        <i class="fa-solid fa-house"></i> Home
+      </button>
+      <button class="btn btn-secondary btn-sm" onclick="location.href='admin.html'">
+        <i class="fa-solid fa-user-gear"></i> Amministrazione
+      </button>
+      <button id="theme-toggle" class="btn btn-secondary btn-icon-only" title="Cambia Tema">
+        <i class="fa-solid fa-moon"></i>
+      </button>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="user-grid">
+      
+      <!-- Left Column: Employee Profile Details -->
+      <aside class="glass-panel profile-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 16px;">
+          <h3 style="font-family: var(--font-title); font-size: 16px; font-weight: 700; color: #ffffff; margin: 0;">
+            <i class="fa-solid fa-address-card" style="color: var(--primary);"></i> Profilo
+          </h3>
+          <button id="edit-profile-btn" class="btn btn-secondary btn-sm" style="padding: 4px 10px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;">
+            <i class="fa-solid fa-pen"></i> Modifica
+          </button>
+        </div>
+        
+        <div class="form-group">
+          <label for="prof-surname">Cognome</label>
+          <input type="text" id="prof-surname" class="form-input" placeholder="Es. MARTINELLI" disabled>
+        </div>
+        
+        <div class="form-group">
+          <label for="prof-name">Nome</label>
+          <input type="text" id="prof-name" class="form-input" placeholder="Es. Luca" disabled>
+        </div>
+
+        <div class="form-group">
+          <label for="prof-address">Indirizzo Sede Azienda</label>
+          <input type="text" id="prof-address" class="form-input" value="Strada Naviglio Alto 46/1, 42122, Parma (PR) " disabled>
+        </div>
+
+        <h3 style="font-family: var(--font-title); font-size: 16px; font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-top: 24px; margin-bottom: 16px; color: #ffffff;">
+          <i class="fa-solid fa-car" style="color: var(--primary);"></i> Dati Autovettura
+        </h3>
+
+        <div class="form-group">
+          <label for="prof-carmodel">Modello Auto</label>
+          <input type="text" id="prof-carmodel" class="form-input" value="Tesla elettrica H5LD Model 3" disabled>
+        </div>
+
+        <div class="form-group">
+          <label for="prof-plate">Targa</label>
+          <input type="text" id="prof-plate" class="form-input" value="GX477ZP" disabled>
+        </div>
+
+        <div class="form-group">
+          <label for="prof-engine">Cilindrata / CV</label>
+          <input type="text" id="prof-engine" class="form-input" value="1.600 cm³   /  80,56 kW " disabled>
+        </div>
+
+        <div class="form-group">
+          <label for="prof-fuel">Alimentazione</label>
+          <input type="text" id="prof-fuel" class="form-input" value="Elettrica" disabled>
+        </div>
+
+        <div class="form-group">
+          <label for="prof-costkm">Costo KM (€)</label>
+          <input type="number" id="prof-costkm" class="form-input" value="0.4" step="0.01" disabled>
+        </div>
+        <div class="form-group">
+          <label for="prof-flatrate">Rimborso Forfettario (€)</label>
+          <input type="number" id="prof-flatrate" class="form-input" value="15.0" step="0.5" disabled>
+        </div>
+      </aside>
+
+      <!-- Right Column: Expense Entries Form List / History -->
+      <main class="glass-panel">
+        
+        <!-- Tabs Navigation -->
+        <div style="display: flex; gap: 10px; margin-bottom: 24px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+          <button id="tab-form-btn" class="btn btn-outline active" style="flex: 1; justify-content: center; gap: 8px;">
+            <i class="fa-solid fa-pen-to-square"></i> Compila Nota Spese
+          </button>
+          <button id="tab-history-btn" class="btn btn-outline" style="flex: 1; justify-content: center; gap: 8px;">
+            <i class="fa-solid fa-clock-rotate-left"></i> Note Spese Inviate
+          </button>
+        </div>
+
+        <!-- Form View Container -->
+        <div id="form-view-container">
+          <div class="panel-title-bar">
+            <h2><i class="fa-solid fa-receipt" style="color: var(--primary);"></i> Elenco Spese del Bimestre</h2>
+            <div class="card-actions">
+              <button id="add-trasferta-btn" class="btn btn-primary btn-sm">
+                <i class="fa-solid fa-car"></i> + Trasferta
+              </button>
+              <button id="add-spesa-btn" class="btn btn-secondary btn-sm">
+                <i class="fa-solid fa-receipt"></i> + Spesa
+              </button>
+            </div>
+          </div>
+
+          <!-- Expenses Container -->
+          <div id="expenses-list">
+            <div id="empty-state" style="text-align: center; padding: 60px 20px; color: var(--text-secondary);">
+              <i class="fa-solid fa-folder-open" style="font-size: 56px; margin-bottom: 16px; opacity: 0.3; color: var(--primary);"></i>
+              <h3 style="font-family: var(--font-title); color: #ffffff; margin-bottom: 8px;">Nessuna spesa inserita</h3>
+              <p>Usa i pulsanti "+ Trasferta" o "+ Spesa" in alto per iniziare a compilare il tuo rendiconto.</p>
+            </div>
+          </div>
+
+          <!-- Submit & Actions Panel -->
+          <div class="submit-bar">
+            <button id="clear-all-btn" class="btn btn-danger btn-sm">
+              <i class="fa-solid fa-trash-can"></i> Cancella Tutto
+            </button>
+            <div style="display: flex; gap: 10px;">
+              <button id="preview-excel-btn" class="btn btn-outline" style="border-color: var(--success); color: var(--success);">
+                <i class="fa-solid fa-file-excel"></i> Anteprima Excel
+              </button>
+              <button id="save-draft-btn" class="btn btn-secondary">
+                <i class="fa-solid fa-floppy-disk"></i> Salva Bozza
+              </button>
+              <button id="submit-report-btn" class="btn btn-primary">
+                <i class="fa-solid fa-paper-plane"></i> Invia Nota Spese
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- History View Container -->
+        <div id="history-view-container" style="display: none;">
+          <h2 style="font-family: var(--font-title); font-size: 20px; font-weight: 700; color: #ffffff; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+            <i class="fa-solid fa-clock-rotate-left" style="color: var(--primary);"></i> Storico Note Spese Inviate
+          </h2>
+          
+          <div id="history-empty-state" style="text-align: center; padding: 60px 20px; color: var(--text-secondary);">
+            <i class="fa-solid fa-clock" style="font-size: 56px; margin-bottom: 16px; opacity: 0.3; color: var(--primary);"></i>
+            <h3 style="font-family: var(--font-title); color: #ffffff; margin-bottom: 8px;">Nessuna nota spese salvata</h3>
+            <p id="history-empty-text">Non ci sono note spese inviate associate al tuo cognome nel database.</p>
+          </div>
+
+          <div id="history-list" style="display: flex; flex-direction: column; gap: 14px;">
+            <!-- Populated dynamically via JS -->
+          </div>
+        </div>
+      </main>
+
+      <!-- Detailed Report View Modal -->
+      <div id="detail-modal" class="modal-overlay">
+        <div class="modal-card" style="max-width: 650px; width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
+          <div class="modal-header">
+            <h3 id="modal-title">Dettaglio Nota Spese</h3>
+            <button id="modal-close" class="modal-close"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+          <div class="modal-body" id="modal-body-content" style="overflow-y: auto; flex-grow: 1;">
+            <!-- Rendered dynamically -->
+          </div>
+          <div class="modal-footer">
+            <button id="modal-close-btn" class="btn btn-secondary btn-sm">Chiudi</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lightbox Modal for Attachment Previews -->
+      <div id="lightbox-modal" class="modal-overlay">
+        <div class="modal-card" style="max-width: 90vw; width: fit-content; max-height: 90vh; border-radius: 12px; padding: 12px; display: flex; flex-direction: column; background: rgba(15, 13, 22, 0.98); border: 1px solid var(--border-color); box-shadow: var(--card-shadow);">
+          <div style="display:flex; justify-content:space-between; align-items:center; width:100%; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 10px; gap: 20px;">
+            <span id="lightbox-title" style="font-family: var(--font-title); font-size:13px; font-weight:600; color:#fff; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; max-width: 80%;">Anteprima</span>
+            <button id="lightbox-close" class="modal-close"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+          <div id="lightbox-content" style="max-height: 75vh; overflow: auto; display: flex; justify-content: center; align-items: center; border-radius: 8px;">
+            <!-- Dynamic image will load here -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Excel Preview Modal -->
+      <div id="excel-preview-modal" class="modal-overlay">
+        <div class="modal-card" style="max-width: 1100px; width: 95%; max-height: 90vh; display: flex; flex-direction: column; background: #1e1b2e; border: 1px solid var(--border-color); border-radius: 12px; box-shadow: var(--card-shadow);">
+          <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding: 14px 20px;">
+            <h3 style="font-family: var(--font-title); font-size: 16px; font-weight: 700; color: #ffffff; display: flex; align-items: center; gap: 8px; margin: 0;">
+              <i class="fa-solid fa-file-excel" style="color: #107c41;"></i> Anteprima Foglio Spese Excel
+            </h3>
+            <button id="excel-preview-close" class="modal-close"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+          <div class="modal-body" style="overflow-y: auto; overflow-x: auto; flex-grow: 1; padding: 20px;">
+            <div style="background: #ffffff; color: #333333; border: 1px solid #d3d3d3; border-radius: 4px; overflow: hidden; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 13px; min-width: 900px;">
+              <!-- Column Letters Header -->
+              <div style="display: flex; background: #f3f2f1; text-align: center; font-weight: bold; border-bottom: 1px solid #d3d3d3; color: #595959; font-size: 11px;">
+                <div style="width: 40px; border-right: 1px solid #d3d3d3; padding: 4px 0; background: #e1dfdd; flex-shrink: 0;"></div>
+                <div style="width: 40px; border-right: 1px solid #d3d3d3; padding: 4px 0; flex-shrink: 0;">A (Num)</div>
+                <div style="width: 90px; border-right: 1px solid #d3d3d3; padding: 4px 0; flex-shrink: 0;">B (Data)</div>
+                <div style="width: 140px; border-right: 1px solid #d3d3d3; padding: 4px 0; flex-shrink: 0;">C (Cliente)</div>
+                <div style="width: 200px; border-right: 1px solid #d3d3d3; padding: 4px 0; flex-shrink: 0; flex-grow: 1; text-align: left; padding-left: 8px;">D (Tratta/Descrizione)</div>
+                <div style="width: 95px; border-right: 1px solid #d3d3d3; padding: 4px 0; flex-shrink: 0;">E (Forfettario)</div>
+                <div style="width: 80px; border-right: 1px solid #d3d3d3; padding: 4px 0; flex-shrink: 0;">F (Pedaggi)</div>
+                <div style="width: 75px; border-right: 1px solid #d3d3d3; padding: 4px 0; flex-shrink: 0;">G (KM)</div>
+                <div style="width: 90px; border-right: 1px solid #d3d3d3; padding: 4px 0; flex-shrink: 0;">H (Rimb. KM)</div>
+                <div style="width: 80px; border-right: 1px solid #d3d3d3; padding: 4px 0; flex-shrink: 0;">I (Altro)</div>
+                <div style="width: 90px; padding: 4px 0; flex-shrink: 0; font-weight: bold; background: #e1dfdd;">J (Totale)</div>
+              </div>
+              <!-- Rows Body -->
+              <div id="excel-preview-rows" style="display: flex; flex-direction: column;"></div>
+            </div>
+          </div>
+          <div class="modal-footer" style="border-top: 1px solid var(--border-color); padding: 14px 20px; display: flex; justify-content: flex-end; gap: 10px;">
+            <button id="excel-preview-close-btn" class="btn btn-secondary btn-sm">Chiudi</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Application Script -->
+  <script src="user.js"></script>
+</body>
+</html>
