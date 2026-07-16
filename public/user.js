@@ -1,5 +1,4 @@
-// --- Global State ---
-const API_BASE = (window.location.protocol === 'file:' || window.location.port !== '3000') 
+const API_BASE = (window.location.protocol === 'file:') 
   ? 'http://localhost:3000' 
   : '';
 
