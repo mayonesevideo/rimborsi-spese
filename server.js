@@ -8,16 +8,83 @@ const ExcelJS = require('exceljs');
 const pdfParse = require('pdf-parse');
 const Tesseract = require('tesseract.js');
 const driveHelper = require('./driveHelper');
+const cookieParser = require('cookie-parser');
+const { OAuth2Client } = require('google-auth-library');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Enable CORS and JSON parsing
+// Configure Google OAuth (uses environment variable on Render, fallback for testing)
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '991220129856-ql9skte1cmqs9c9juhas1ri24gd6vif0.apps.googleusercontent.com';
+const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
+
+// Enable CORS, JSON, URLencoded, and Cookies
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
-// Serve static files from the 'public' directory
+// Auth checking middleware
+function checkAuth(requiredRole) {
+  return (req, res, next) => {
+    const session = req.cookies && req.cookies.session;
+    if (!session) {
+      if (req.headers['accept'] && req.headers['accept'].includes('text/html')) {
+        return res.redirect('/login.html');
+      }
+      return res.status(401).json({ error: 'Non autorizzato. Effettua l\'accesso.' });
+    }
+
+    try {
+      const user = JSON.parse(Buffer.from(session, 'base64').toString('utf8'));
+      
+      // Determine authorization based on role
+      if (requiredRole === 'admin' && user.role !== 'admin') {
+        if (req.headers['accept'] && req.headers['accept'].includes('text/html')) {
+          return res.redirect('/user.html');
+        }
+        return res.status(403).json({ error: 'Accesso negato. Permessi di amministrazione richiesti.' });
+      }
+      
+      req.user = user;
+      next();
+    } catch (err) {
+      res.clearCookie('session');
+      if (req.headers['accept'] && req.headers['accept'].includes('text/html')) {
+        return res.redirect('/login.html');
+      }
+      return res.status(401).json({ error: 'Sessione non valida.' });
+    }
+  };
+}
+
+// Protected HTML Routes (must be declared BEFORE express.static)
+app.get('/', (req, res) => {
+  res.redirect('/login.html');
+});
+
+app.get('/login.html', (req, res, next) => {
+  // If user is already logged in, redirect them to their page
+  const session = req.cookies && req.cookies.session;
+  if (session) {
+    try {
+      const user = JSON.parse(Buffer.from(session, 'base64').toString('utf8'));
+      if (user.role === 'admin') return res.redirect('/admin.html');
+      return res.redirect('/user.html');
+    } catch (e) {}
+  }
+  next(); // Serve static login.html
+});
+
+app.get('/user.html', checkAuth('employee'), (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'user.html'));
+});
+
+app.get('/admin.html', checkAuth('admin'), (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+// Serve other static files
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Ensure directories exist
@@ -29,8 +96,8 @@ if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 if (!fs.existsSync(TEMPLATES_DIR)) fs.mkdirSync(TEMPLATES_DIR, { recursive: true });
 
-// Google Drive on-demand attachment restore middleware
-app.get('/uploads/:reportId/:fileName', async (req, res, next) => {
+// Google Drive on-demand attachment restore middleware (protected)
+app.get('/uploads/:reportId/:fileName', checkAuth('employee'), async (req, res, next) => {
   const { reportId, fileName } = req.params;
   if (reportId === 'temp') return next(); // Skip temp files
   
@@ -48,7 +115,7 @@ app.get('/uploads/:reportId/:fileName', async (req, res, next) => {
   next();
 });
 
-app.use('/uploads', express.static(UPLOADS_DIR));
+app.use('/uploads', checkAuth('employee'), express.static(UPLOADS_DIR));
 
 const DB_PATH = path.join(DATA_DIR, 'db.json');
 
@@ -161,14 +228,96 @@ function formatDateShortRange(startDate, endDate) {
   return startFmt;
 }
 
+// --- Authentication Endpoints ---
+
+// Auth Config
+app.get('/api/auth/config', (req, res) => {
+  res.json({ clientId: GOOGLE_CLIENT_ID });
+});
+
+// Google Authentication Callback
+app.post('/api/auth/google', async (req, res) => {
+  const { credential } = req.body;
+  if (!credential) {
+    return res.status(400).json({ error: 'Token non fornito.' });
+  }
+
+  try {
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: GOOGLE_CLIENT_ID
+    });
+
+    const payload = ticket.getPayload();
+    const email = payload.email.toLowerCase().trim();
+    const name = payload.given_name || '';
+    const surname = payload.family_name || '';
+
+    // Role mapping
+    let role = 'employee';
+    if (email === 'amministrazione@mayonese.com' || email === 'luca@mayonese.com') {
+      role = 'admin'; // Grant admin role
+    }
+
+    const sessionData = {
+      email,
+      name,
+      surname,
+      role
+    };
+
+    const sessionCookie = Buffer.from(JSON.stringify(sessionData)).toString('base64');
+
+    // Secure cookie setup
+    res.cookie('session', sessionCookie, {
+      httpOnly: true,
+      secure: req.protocol === 'https' || process.env.NODE_ENV === 'production',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+
+    res.json({ success: true, email, role, name, surname });
+  } catch (err) {
+    console.error('Google verification error:', err);
+    res.status(401).json({ error: 'Accesso Google fallito o token scaduto.' });
+  }
+});
+
+// Logout
+app.post('/api/auth/logout', (req, res) => {
+  res.clearCookie('session');
+  res.json({ success: true });
+});
+
+// Current User Details
+app.get('/api/auth/me', checkAuth('employee'), (req, res) => {
+  res.json(req.user);
+});
+
 // --- API Endpoints ---
 
-// 1. GET /api/reports - Get all reports
-app.get('/api/reports', (req, res) => {
+// 1. GET /api/reports - Get all reports (scoped by authorization)
+app.get('/api/reports', checkAuth('employee'), (req, res) => {
   const db = readDb();
   const activeReports = db.filter(r => !r.deleted);
+  
+  // Filter by user role and identity
+  const user = req.user;
+  const filteredReports = activeReports.filter(report => {
+    if (user.role === 'admin') return true; // Admins can see everything
+    
+    // 1. Check by email if present
+    if (report.email && report.email.toLowerCase().trim() === user.email.toLowerCase().trim()) {
+      return true;
+    }
+    
+    // 2. Fallback: match by name and surname
+    const fullName = `${report.profile.name} ${report.profile.surname}`.toLowerCase().trim();
+    const googleFullName = `${user.name} ${user.surname}`.toLowerCase().trim();
+    return fullName === googleFullName;
+  });
+
   // Return summarized information for the list view
-  const summary = activeReports.map(report => {
+  const summary = filteredReports.map(report => {
     // Calculate total amount spent
     const totalKmRefund = report.items.reduce((sum, item) => {
       if (item.type === 'trasferta' && item.km) {
@@ -211,7 +360,7 @@ app.get('/api/reports', (req, res) => {
 });
 
 // 5.5 GET /api/reports/export-period - Export consolidated Excel for a given period
-app.get('/api/reports/export-period', async (req, res) => {
+app.get('/api/reports/export-period', checkAuth('admin'), async (req, res) => {
   try {
     const { start, end, employee, onlyViola, highlightViola } = req.query;
     if (!start || !end) {
@@ -390,11 +539,22 @@ app.get('/api/reports/export-period', async (req, res) => {
 });
 
 // 2. GET /api/reports/:id - Get detailed report
-app.get('/api/reports/:id', (req, res) => {
+app.get('/api/reports/:id', checkAuth('employee'), (req, res) => {
   const db = readDb();
   const report = db.find(r => r.id === req.params.id && !r.deleted);
   if (!report) {
     return res.status(404).json({ error: 'Report not found' });
+  }
+
+  // Ownership validation: admins see all, employees only their own
+  if (req.user.role !== 'admin') {
+    const isEmailMatch = report.email && report.email.toLowerCase().trim() === req.user.email.toLowerCase().trim();
+    const fullName = `${report.profile.name} ${report.profile.surname}`.toLowerCase().trim();
+    const googleFullName = `${req.user.name} ${req.user.surname}`.toLowerCase().trim();
+    const isNameMatch = fullName === googleFullName;
+    if (!isEmailMatch && !isNameMatch) {
+      return res.status(403).json({ error: 'Accesso negato. Questa nota spese appartiene a un altro utente.' });
+    }
   }
   // Sort items chronologically by date
   if (report.items) {
@@ -408,7 +568,7 @@ app.get('/api/reports/:id', (req, res) => {
 });
 
 // 3. POST /api/reports - Submit a new report (JSON payload)
-app.post('/api/reports', (req, res) => {
+app.post('/api/reports', checkAuth('employee'), (req, res) => {
   try {
     const payload = req.body;
     if (!payload || !payload.profile || !payload.items) {
@@ -460,6 +620,7 @@ app.post('/api/reports', (req, res) => {
 
     const newReport = {
       id: reportId,
+      email: req.user.email, // Record creator's email address
       dateSubmitted: new Date().toISOString(),
       profile: payload.profile,
       items: processedItems
@@ -486,7 +647,7 @@ app.post('/api/reports', (req, res) => {
 });
 
 // PUT /api/reports/:id - Edit an existing report
-app.put('/api/reports/:id', (req, res) => {
+app.put('/api/reports/:id', checkAuth('employee'), (req, res) => {
   try {
     const reportId = req.params.id;
     const payload = req.body;
@@ -498,6 +659,18 @@ app.put('/api/reports/:id', (req, res) => {
     }
     
     const originalReport = db[index];
+    
+    // Ownership validation: admins can edit all, employees only their own
+    if (req.user.role !== 'admin') {
+      const isEmailMatch = originalReport.email && originalReport.email.toLowerCase().trim() === req.user.email.toLowerCase().trim();
+      const fullName = `${originalReport.profile.name} ${originalReport.profile.surname}`.toLowerCase().trim();
+      const googleFullName = `${req.user.name} ${req.user.surname}`.toLowerCase().trim();
+      const isNameMatch = fullName === googleFullName;
+      if (!isEmailMatch && !isNameMatch) {
+        return res.status(403).json({ error: 'Accesso negato. Questa nota spese appartiene a un altro utente.' });
+      }
+    }
+    
     const reportUploadDir = path.join(UPLOADS_DIR, reportId);
     if (!fs.existsSync(reportUploadDir)) {
       fs.mkdirSync(reportUploadDir, { recursive: true });
@@ -547,7 +720,7 @@ app.put('/api/reports/:id', (req, res) => {
 });
 
 // 3.5 POST /api/attachments/temp - Upload file to temp folder for drafts
-app.post('/api/attachments/temp', upload.single('file'), (req, res) => {
+app.post('/api/attachments/temp', checkAuth('employee'), upload.single('file'), (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'Nessun file caricato' });
@@ -569,12 +742,23 @@ app.post('/api/attachments/temp', upload.single('file'), (req, res) => {
 });
 
 // 4. DELETE /api/reports/:id - Move a report to trash
-app.delete('/api/reports/:id', (req, res) => {
+app.delete('/api/reports/:id', checkAuth('employee'), (req, res) => {
   const db = readDb();
   const report = db.find(r => r.id === req.params.id);
   
   if (!report) {
     return res.status(404).json({ error: 'Report not found' });
+  }
+
+  // Ownership validation: admins can delete all, employees only their own
+  if (req.user.role !== 'admin') {
+    const isEmailMatch = report.email && report.email.toLowerCase().trim() === req.user.email.toLowerCase().trim();
+    const fullName = `${report.profile.name} ${report.profile.surname}`.toLowerCase().trim();
+    const googleFullName = `${req.user.name} ${req.user.surname}`.toLowerCase().trim();
+    const isNameMatch = fullName === googleFullName;
+    if (!isEmailMatch && !isNameMatch) {
+      return res.status(403).json({ error: 'Accesso negato. Questa nota spese appartiene a un altro utente.' });
+    }
   }
 
   // Mark as deleted with timestamp (expires in 60 days)
@@ -586,7 +770,7 @@ app.delete('/api/reports/:id', (req, res) => {
 });
 
 // 4.2 GET /api/trash - Retrieve all deleted reports in trash
-app.get('/api/trash', (req, res) => {
+app.get('/api/trash', checkAuth('admin'), (req, res) => {
   const db = readDb();
   const trash = db.filter(r => r.deleted).map(report => {
     const deletedTime = new Date(report.deletedAt).getTime();
@@ -605,7 +789,7 @@ app.get('/api/trash', (req, res) => {
 });
 
 // 4.5 POST /api/trash/:id/restore - Restore a deleted report from trash
-app.post('/api/trash/:id/restore', (req, res) => {
+app.post('/api/trash/:id/restore', checkAuth('admin'), (req, res) => {
   const db = readDb();
   const report = db.find(r => r.id === req.params.id);
   if (!report) {
@@ -620,7 +804,7 @@ app.post('/api/trash/:id/restore', (req, res) => {
 });
 
 // 5. GET /api/reports/:id/excel - Generate Excel
-app.get('/api/reports/:id/excel', async (req, res) => {
+app.get('/api/reports/:id/excel', checkAuth('admin'), async (req, res) => {
   try {
     const { highlightViola } = req.query;
     const db = readDb();
@@ -761,7 +945,7 @@ app.get('/api/reports/:id/excel', async (req, res) => {
 });
 
 // 6. GET /api/reports/:id/zip - Download renamed attachments ZIP
-app.get('/api/reports/:id/zip', async (req, res) => {
+app.get('/api/reports/:id/zip', checkAuth('admin'), async (req, res) => {
   try {
     const db = readDb();
     const report = db.find(r => r.id === req.params.id);
@@ -831,7 +1015,7 @@ app.get('/api/reports/:id/zip', async (req, res) => {
 });
 
 // 7. POST /api/analyze-attachment - Parse PDF text / file heuristics for OCR metadata
-app.post('/api/analyze-attachment', upload.single('file'), async (req, res) => {
+app.post('/api/analyze-attachment', checkAuth('employee'), upload.single('file'), async (req, res) => {
   try {
     let filePath;
     let originalName;
