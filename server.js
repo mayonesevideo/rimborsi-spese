@@ -782,7 +782,8 @@ app.get('/api/reports/:id/zip', async (req, res) => {
     let fileCount = 0;
 
     // Iterate through items and search for attachments
-    report.items.forEach((item, index) => {
+    for (let index = 0; index < report.items.length; index++) {
+      const item = report.items[index];
       const x = index + 1; // 1-based row index
       const clientClean = (item.client || 'Generico').trim().replace(/[^a-zA-Z0-9]/g, '_');
       
@@ -794,8 +795,11 @@ app.get('/api/reports/:id/zip', async (req, res) => {
         }
       }
 
-      (item.attachments || []).forEach(att => {
+      for (const att of (item.attachments || [])) {
         const filePath = path.join(reportUploadDir, att.fileName);
+        if (!fs.existsSync(filePath)) {
+          await driveHelper.downloadFileFromDriveIfMissing(report.id, att.fileName);
+        }
         if (fs.existsSync(filePath)) {
           const sanitizedOriginal = att.originalName.replace(/[^a-zA-Z0-9.-]/g, '_');
           const prefix = item.reimbursementType === 'giustificativo' ? 'G' : 'RA';
@@ -804,8 +808,8 @@ app.get('/api/reports/:id/zip', async (req, res) => {
           zip.file(finalName, fileContent);
           fileCount++;
         }
-      });
-    });
+      }
+    }
 
     if (fileCount === 0) {
       return res.status(400).json({ error: 'No attachments found for this report' });
