@@ -20,6 +20,7 @@ let entriesState = [];
 // Store actual File objects separately since they can't be JSON serialized
 let fileObjectsMap = {}; 
 let autocompleteTimeout = null;
+let editingReportId = null;
 
 const ORIGIN_LAT = 44.8219;
 const ORIGIN_LON = 10.3117;
@@ -218,6 +219,8 @@ function setupGlobalListeners() {
     if (confirm('Sei sicuro di voler cancellare tutte le spese inserite?')) {
       entriesState = [];
       fileObjectsMap = {};
+      editingReportId = null;
+      updateEditingBanner();
       saveDraft();
       renderEntries();
       showToast('Tutte le spese sono state rimosse', 'info');
@@ -230,6 +233,21 @@ function setupGlobalListeners() {
   });
 
   document.getElementById('submit-report-btn').addEventListener('click', submitReport);
+
+  const cancelEditBtn = document.getElementById('cancel-edit-btn');
+  if (cancelEditBtn) {
+    cancelEditBtn.addEventListener('click', () => {
+      if (confirm('Vuoi annullare la modifica? Eventuali modifiche correnti verranno perse.')) {
+        editingReportId = null;
+        updateEditingBanner();
+        entriesState = [];
+        fileObjectsMap = {};
+        loadDraft();
+        renderEntries();
+        showToast('Modifica annullata. Caricata l\'ultima bozza locale.', 'info');
+      }
+    });
+  }
 
   // Excel Preview button listener
   const previewExcelBtn = document.getElementById('preview-excel-btn');
@@ -287,6 +305,16 @@ function addEntry(type) {
   const element = document.querySelector(`.expense-card[data-id="${id}"]`);
   if (element) {
     element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+
+function updateEditingBanner() {
+  const banner = document.getElementById('editing-banner');
+  if (!banner) return;
+  if (editingReportId) {
+    banner.style.display = 'flex';
+  } else {
+    banner.style.display = 'none';
   }
 }
 
@@ -459,7 +487,7 @@ function renderEntries() {
             </div>
           </div>
           <div class="form-group">
-            <label>Distanza KM A/R</label>
+            <label>Distanza KM A/R <span style="font-size: 10px; opacity: 0.65; font-weight: normal; margin-left: 4px;">(lascia vuoto se senza auto propria)</span></label>
             <input type="number" class="form-input km-input" value="${entry.km !== undefined ? entry.km : ''}" placeholder="KM Totali">
           </div>
         </div>
@@ -662,7 +690,7 @@ function renderCardAttachments(entry, cardElement) {
               }
             }
 
-            if (result.client && result.client !== 'Cliente Generico') {
+            if (result.client && result.client !== 'Cliente Generico' && (!entry.client || entry.client.trim() === '')) {
               entry.client = result.client;
               const clientInput = cardElement.querySelector('.client-input');
               if (clientInput) clientInput.value = result.client;
@@ -1385,8 +1413,11 @@ async function submitReport() {
       })
     };
 
-    const response = await fetch(`${API_BASE}/api/reports`, {
-      method: 'POST',
+    const url = editingReportId ? `${API_BASE}/api/reports/${editingReportId}` : `${API_BASE}/api/reports`;
+    const method = editingReportId ? 'PUT' : 'POST';
+
+    const response = await fetch(url, {
+      method: method,
       headers: {
         'Content-Type': 'application/json'
       },
@@ -1399,12 +1430,14 @@ async function submitReport() {
     }
 
     const resData = await response.json();
-    showToast('Nota spese inviata con successo all\'amministrazione!', 'success');
+    showToast(editingReportId ? 'Nota spese modificata e salvata con successo!' : 'Nota spese inviata con successo all\'amministrazione!', 'success');
     
-    // Clear draft and files map
+    // Clear draft, editing ID, and files map
     localStorage.removeItem('rimborsi_v2_draft');
     entriesState = [];
     fileObjectsMap = {};
+    editingReportId = null;
+    updateEditingBanner();
     
     setTimeout(() => {
       // Redirect to home
@@ -1541,21 +1574,32 @@ async function fetchAndRenderUserHistory() {
       card.style.border = '1px solid rgba(255, 255, 255, 0.05)';
       card.style.background = 'rgba(255, 255, 255, 0.01)';
       
-      const dateFormatted = new Date(report.dateSubmitted).toLocaleDateString('it-IT', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      });
+      let dateRangeText = '';
+      if (report.minDate && report.maxDate) {
+        const minParts = report.minDate.split('-');
+        const maxParts = report.maxDate.split('-');
+        const minFmt = `${minParts[2]}/${minParts[1]}/${minParts[0]}`;
+        const maxFmt = `${maxParts[2]}/${maxParts[1]}/${maxParts[0]}`;
+        if (report.minDate === report.maxDate) {
+          dateRangeText = `Nota Spese del ${minFmt}`;
+        } else {
+          dateRangeText = `Nota Spese dal ${minFmt} al ${maxFmt}`;
+        }
+      } else {
+        const dateSubmittedFmt = new Date(report.dateSubmitted).toLocaleDateString('it-IT');
+        dateRangeText = `Nota Spese del ${dateSubmittedFmt}`;
+      }
 
       const timeFormatted = new Date(report.dateSubmitted).toLocaleTimeString('it-IT', {
         hour: '2-digit',
         minute: '2-digit'
       });
+      const submitDateFmt = new Date(report.dateSubmitted).toLocaleDateString('it-IT');
 
       card.innerHTML = `
         <div style="flex-grow:1; display:flex; flex-direction:column; gap:4px; overflow:hidden;">
           <h4 style="font-family:var(--font-title); font-size:15px; color:#ffffff; font-weight:600; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">
-            Nota del ${dateFormatted} <span style="font-size:11px; font-weight:normal; color:var(--text-secondary); margin-left:6px;">alle ${timeFormatted}</span>
+            ${dateRangeText} <span style="font-size:11px; font-weight:normal; color:var(--text-secondary); margin-left:6px;">(Inviata il ${submitDateFmt} alle ${timeFormatted})</span>
           </h4>
           <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; font-size:11px; color:var(--text-secondary);">
             <span>Periodo: <strong style="color:#ffffff;">${report.period}</strong></span>
@@ -1566,6 +1610,8 @@ async function fetchAndRenderUserHistory() {
           </div>
         </div>
         <div style="display:flex; gap:8px; flex-shrink:0;">
+          <button class="btn btn-outline btn-sm edit-report-btn" style="padding: 5px 8px; border-color: var(--primary); color: var(--primary);" title="Modifica"><i class="fa-solid fa-pen-to-square"></i></button>
+          <button class="btn btn-outline btn-sm delete-report-btn" style="padding: 5px 8px; border-color: var(--danger); color: var(--danger);" title="Elimina"><i class="fa-solid fa-trash-can"></i></button>
           <button class="btn btn-outline btn-sm preview-excel-btn" style="padding: 5px 8px; border-color: var(--success); color: var(--success);" title="Anteprima Excel"><i class="fa-solid fa-file-excel"></i></button>
           <button class="btn btn-outline btn-sm view-detail-btn" style="padding: 5px 8px;" title="Vedi Dettaglio"><i class="fa-solid fa-eye"></i></button>
           <a href="/api/reports/${report.id}/excel" class="btn btn-primary btn-sm" style="padding: 5px 8px;" title="Scarica Excel"><i class="fa-solid fa-file-excel"></i></a>
@@ -1575,6 +1621,14 @@ async function fetchAndRenderUserHistory() {
 
       card.querySelector('.view-detail-btn').addEventListener('click', () => {
         showUserReportDetail(report.id);
+      });
+
+      card.querySelector('.edit-report-btn').addEventListener('click', () => {
+        editUserReport(report.id);
+      });
+
+      card.querySelector('.delete-report-btn').addEventListener('click', () => {
+        deleteUserReport(report.id);
       });
 
       card.querySelector('.preview-excel-btn').addEventListener('click', async () => {
@@ -1593,6 +1647,97 @@ async function fetchAndRenderUserHistory() {
   } catch (err) {
     console.error(err);
     historyList.innerHTML = `<div style="text-align:center; padding:20px; color:var(--danger);"><i class="fa-solid fa-triangle-exclamation"></i> Errore: ${err.message}</div>`;
+  }
+}
+
+async function editUserReport(reportId) {
+  if (entriesState.length > 0) {
+    const confirmOverwrite = confirm(
+      "Vuoi caricare questa nota spese nel pannello di compilazione?\n\n" +
+      "ATTENZIONE: Qualsiasi dato attualmente non salvato nella bozza corrente andrà perso."
+    );
+    if (!confirmOverwrite) return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/api/reports/${reportId}`);
+    if (!res.ok) throw new Error("Impossibile recuperare i dettagli della nota spese.");
+
+    const report = await res.json();
+
+    // Populate state
+    editingReportId = report.id;
+    entriesState = (report.items || []).map(item => ({
+      ...item,
+      attachments: (item.attachments || []).map(att => ({
+        ...att,
+        name: att.name || att.originalName || 'Allegato',
+        isUploaded: true
+      }))
+    }));
+    fileObjectsMap = {}; // Reset since files are already on the server
+
+    // Set profile state from the loaded report
+    if (report.profile) {
+      profileState = { ...profileState, ...report.profile };
+      // Save profile to localStorage as well so UI inputs remain synced
+      localStorage.setItem('rimborsi_v2_profile', JSON.stringify(profileState));
+      
+      // Populate UI inputs with profile state
+      document.getElementById('prof-surname').value = profileState.surname || '';
+      document.getElementById('prof-name').value = profileState.name || '';
+      document.getElementById('prof-address').value = profileState.address || '';
+      document.getElementById('prof-carmodel').value = profileState.carModel || '';
+      document.getElementById('prof-plate').value = profileState.plate || '';
+      document.getElementById('prof-engine').value = profileState.engine || '';
+      document.getElementById('prof-fuel').value = profileState.fuel || '';
+      document.getElementById('prof-costkm').value = profileState.costKm || '';
+      document.getElementById('prof-flatrate').value = profileState.flatRateRate || '';
+    }
+
+    // Refresh UI & switch tab
+    renderEntries();
+    updateEditingBanner();
+    saveDraft();
+
+    document.getElementById('tab-form-btn').click();
+    showToast(`Nota spese del ${new Date(report.dateSubmitted).toLocaleDateString('it-IT')} caricata per la modifica!`, 'success');
+  } catch (err) {
+    console.error(err);
+    showToast(`Caricamento fallito: ${err.message}`, 'danger');
+  }
+}
+
+async function deleteUserReport(reportId) {
+  const confirmDelete = confirm(
+    "Sei sicuro di voler eliminare definitivamente questa nota spese?\n\n" +
+    "La nota spese verrà spostata nel Cestino."
+  );
+  if (!confirmDelete) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/reports/${reportId}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) throw new Error("Impossibile eliminare la nota spese.");
+
+    showToast("Nota spese eliminata con successo!", "success");
+    
+    // If we were editing this report, clear it
+    if (editingReportId === reportId) {
+      editingReportId = null;
+      updateEditingBanner();
+      entriesState = [];
+      fileObjectsMap = {};
+      saveDraft();
+      renderEntries();
+    }
+
+    // Refresh history view
+    fetchAndRenderUserHistory();
+  } catch (err) {
+    console.error(err);
+    showToast(`Eliminazione fallita: ${err.message}`, 'danger');
   }
 }
 
