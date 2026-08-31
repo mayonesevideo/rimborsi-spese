@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Accedi - Sistema Rimborsi</title>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <style>
+    :root {
+      --bg-dark: #0f0c1b;
+      --bg-card: #1f1b2e;
+      --primary: #9d4edd;
+      --primary-hover: #7b2cbf;
+      --text-main: #ffffff;
+      --text-secondary: #b5aed4;
+      --border-color: rgba(157, 78, 221, 0.2);
+      --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Animated background elements */
+    .bg-circle {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(120px);
+      z-index: 1;
+      opacity: 0.15;
+    }
+    .circle-1 {
+      top: -10%;
+      left: -10%;
+      width: 400px;
+      height: 400px;
+      background: var(--primary);
+    }
+    .circle-2 {
+      bottom: -10%;
+      right: -10%;
+      width: 400px;
+      height: 400px;
+      background: #3a0ca3;
+    }
+
+    .login-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 40px;
+      width: 100%;
+      max-width: 420px;
+      text-align: center;
+      box-shadow: var(--card-shadow);
+      z-index: 10;
+      position: relative;
+      backdrop-filter: blur(10px);
+    }
+
+    .logo-container {
+      margin-bottom: 30px;
+    }
+    .logo-icon {
+      font-size: 48px;
+      color: var(--primary);
+      margin-bottom: 15px;
+      display: inline-block;
+      text-shadow: 0 0 20px rgba(157, 78, 221, 0.4);
+    }
+    .login-container h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 26px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      letter-spacing: -0.5px;
+    }
+    .login-container p {
+      color: var(--text-secondary);
+      font-size: 14px;
+      margin-bottom: 35px;
+      line-height: 1.5;
+    }
+
+    .google-btn-wrapper {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 20px;
+      min-height: 44px;
+    }
+
+    .error-box {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      color: #fca5a5;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 20px;
+      display: none;
+      align-items: center;
+      gap: 8px;
+      justify-content: center;
+    }
+
+    .footer-text {
+      font-size: 11px;
+      color: var(--text-secondary);
+      opacity: 0.7;
+      margin-top: 20px;
+    }
+
+    .loading-spinner {
+      display: none;
+      font-size: 24px;
+      color: var(--primary);
+      margin: 20px auto;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bg-circle circle-1"></div>
+  <div class="bg-circle circle-2"></div>
+
+  <div class="login-container">
+    <div class="logo-container">
+      <div class="logo-icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+      <h1>Sistema Rimborsi</h1>
+      <p>Gestione note spese ed allegati aziendali. Accedi con il tuo account Google Workspace.</p>
+    </div>
+
+    <div class="error-box" id="error-message">
+      <i class="fa-solid fa-circle-exclamation"></i>
+      <span>Errore di accesso. Riprova.</span>
+    </div>
+
+    <div class="loading-spinner" id="loading-spinner">
+      <i class="fa-solid fa-circle-notch"></i>
+    </div>
+
+    <div class="google-btn-wrapper" id="google-btn-container">
+      <!-- Google Sign-In Button will be rendered here -->
+    </div>
+
+    <div class="footer-text">
+      Mayonese s.r.l. &copy; 2026 - Tutti i diritti riservati
+    </div>
+  </div>
+
+  <!-- Google Identity Services client library -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  
+  <script>
+    async function initGoogleSignIn() {
+      const errorBox = document.getElementById('error-message');
+      const spinner = document.getElementById('loading-spinner');
+      
+      try {
+        // Fetch client ID config from server
+        const res = await fetch('/api/auth/config');
+        if (!res.ok) throw new Error("Impossibile caricare la configurazione di sicurezza.");
+        const config = await res.json();
+        
+        if (!config.clientId || config.clientId.includes('YOUR_DEFAULT_CLIENT_ID')) {
+          showError("Google Client ID non configurato sul server. Contatta l'amministratore.");
+          return;
+        }
+
+        // Initialize Google Identity Services
+        google.accounts.id.initialize({
+          client_id: config.clientId,
+          callback: handleCredentialResponse,
+          auto_select: false,
+          cancel_on_tap_outside: true
+        });
+
+        // Render the Google Sign-in button
+        google.accounts.id.renderButton(
+          document.getElementById('google-btn-container'),
+          { 
+            theme: 'dark', 
+            size: 'large', 
+            text: 'signin_with', 
+            shape: 'pill',
+            logo_alignment: 'left',
+            width: 320
+          }
+        );
+      } catch (err) {
+        console.error(err);
+        showError("Impossibile caricare il sistema di accesso di Google.");
+      }
+    }
+
+    async function handleCredentialResponse(response) {
+      const errorBox = document.getElementById('error-message');
+      const btnContainer = document.getElementById('google-btn-container');
+      const spinner = document.getElementById('loading-spinner');
+
+      errorBox.style.display = 'none';
+      btnContainer.style.display = 'none';
+      spinner.style.display = 'block';
+
+      try {
+        const res = await fetch('/api/auth/google', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ credential: response.credential })
+        });
+
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || "Errore di autenticazione");
+
+        // Redirect based on role
+        if (result.role === 'admin') {
+          window.location.href = '/admin.html';
+        } else {
+          window.location.href = '/user.html';
+        }
+      } catch (err) {
+        console.error(err);
+        showError(err.message);
+        btnContainer.style.display = 'flex';
+        spinner.style.display = 'none';
+      }
+    }
+
+    function showError(msg) {
+      const errorBox = document.getElementById('error-message');
+      errorBox.querySelector('span').innerText = msg;
+      errorBox.style.display = 'flex';
+    }
+
+    // Run on script load
+    window.onload = function() {
+      // Small timeout to ensure Google library has loaded
+      setTimeout(initGoogleSignIn, 500);
+    };
+  </script>
+</body>
+</html>

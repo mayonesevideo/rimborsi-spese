@@ -8,12 +8,57 @@ let activeEntryId = null;
 let activeReportId = null;
 
 // --- Initialization ---
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   initTheme();
-  populateBimestreDropdown();
-  fetchReports();
-  setupGlobalListeners();
+  
+  // Check auth and verify admin role
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/me`);
+    if (!res.ok) {
+      window.location.href = '/login.html';
+      return;
+    }
+    const user = await res.json();
+    if (user.role !== 'admin') {
+      window.location.href = '/user.html';
+      return;
+    }
+
+    setupLogout();
+    populateBimestreDropdown();
+    fetchReports();
+    setupGlobalListeners();
+  } catch (err) {
+    console.error('Session verification failed:', err);
+    window.location.href = '/login.html';
+  }
 });
+
+function setupLogout() {
+  const logoutBtn = document.getElementById('logout-btn') || createLogoutButton();
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', async () => {
+      const res = await fetch(`${API_BASE}/api/auth/logout`, { method: 'POST' });
+      if (res.ok) {
+        window.location.href = '/login.html';
+      }
+    });
+  }
+}
+
+function createLogoutButton() {
+  const header = document.querySelector('header .header-controls') || document.querySelector('header');
+  if (!header) return null;
+  
+  const btn = document.createElement('button');
+  btn.id = 'logout-btn';
+  btn.className = 'btn btn-outline btn-sm';
+  btn.style.borderColor = 'var(--danger)';
+  btn.style.color = 'var(--danger)';
+  btn.innerHTML = '<i class="fa-solid fa-right-from-bracket"></i> Esci';
+  header.appendChild(btn);
+  return btn;
+}
 
 // --- Theme Management ---
 function initTheme() {
