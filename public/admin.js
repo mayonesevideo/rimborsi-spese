@@ -286,7 +286,7 @@ function renderReportsTable() {
       <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${entry.description || ''}">${entry.description || ''}</td>
       <td style="text-align: center; color: var(--text-secondary); font-weight: 500;">${entry.type === 'trasferta' && entry.km ? entry.km : '-'}</td>
       <td><span class="badge badge-money" style="float: right;">${moneyFormatted}</span></td>
-      <td style="text-align: right;" class="actions-td">
+      <td style="text-align: right; white-space: nowrap;" class="actions-td">
         <button class="btn btn-outline btn-sm view-btn" title="Vedi Dettagli & Allegati" style="padding: 5px 10px; font-size:11px;">
           <i class="fa-solid fa-eye"></i> Vedi
         </button>
