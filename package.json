@@ -8,9 +8,11 @@
     "dev": "node server.js"
   },
   "dependencies": {
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "exceljs": "^4.4.0",
     "express": "^4.21.2",
+    "google-auth-library": "^11.0.2",
     "googleapis": "^173.0.0",
     "jszip": "^3.10.1",
     "multer": "^1.4.5-lts.1",
