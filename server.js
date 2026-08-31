@@ -212,7 +212,7 @@ app.get('/api/reports', (req, res) => {
 // 5.5 GET /api/reports/export-period - Export consolidated Excel for a given period
 app.get('/api/reports/export-period', async (req, res) => {
   try {
-    const { start, end, employee, onlyViola } = req.query;
+    const { start, end, employee, onlyViola, highlightViola } = req.query;
     if (!start || !end) {
       return res.status(400).json({ error: 'Parametri start e end obbligatori (formato YYYY-MM)' });
     }
@@ -480,6 +480,67 @@ app.post('/api/reports', (req, res) => {
     res.status(201).json({ success: true, reportId });
   } catch (error) {
     console.error('Error submitting report:', error);
+    res.status(500).json({ error: 'Internal Server Error', details: error.message });
+  }
+});
+
+// PUT /api/reports/:id - Edit an existing report
+app.put('/api/reports/:id', (req, res) => {
+  try {
+    const reportId = req.params.id;
+    const payload = req.body;
+    
+    const db = readDb();
+    const index = db.findIndex(r => r.id === reportId && !r.deleted);
+    if (index === -1) {
+      return res.status(404).json({ error: 'Nota spese non trovata' });
+    }
+    
+    const originalReport = db[index];
+    const reportUploadDir = path.join(UPLOADS_DIR, reportId);
+    if (!fs.existsSync(reportUploadDir)) {
+      fs.mkdirSync(reportUploadDir, { recursive: true });
+    }
+    
+    const processedItems = payload.items.map(item => {
+      const attachments = (item.attachments || []).map(att => {
+        if (att.fileName) {
+          const tempPath = path.join(UPLOADS_DIR, 'temp', att.fileName);
+          const destPath = path.join(reportUploadDir, att.fileName);
+          
+          if (fs.existsSync(tempPath)) {
+            fs.renameSync(tempPath, destPath);
+            driveHelper.uploadAttachment(reportId, att.fileName);
+          }
+          
+          return {
+            id: att.id,
+            originalName: att.name || att.originalName,
+            fileName: att.fileName,
+            type: att.type,
+            size: att.size
+          };
+        }
+        return null;
+      }).filter(Boolean);
+      
+      return {
+        ...item,
+        attachments
+      };
+    });
+    
+    db[index] = {
+      ...originalReport,
+      profile: payload.profile,
+      items: processedItems,
+      lastModified: new Date().toISOString()
+    };
+    
+    writeDb(db);
+    res.json({ success: true, reportId });
+  } catch (error) {
+    console.error('Error updating report:', error);
     res.status(500).json({ error: 'Internal Server Error', details: error.message });
   }
 });
